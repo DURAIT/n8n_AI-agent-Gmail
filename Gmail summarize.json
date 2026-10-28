@@ -1,0 +1,218 @@
+{
+  "name": "Gmail summarize",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b80a50f4-60db-4e88-9eb8-4a8dc8b1b581",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 5,
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f2da65a0-66d5-4aea-9e2e-8cd2f897932b",
+      "name": "Get many messages",
+      "webhookId": "a483c19a-f32d-4bd3-9a60-5702ef3eaf01",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qwxectnGPzERAv8V",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Summarize the following email snippet into exactly one line, with a maximum of 200 words. Do not include any greetings, headings, or extra text.\n\nEmail Content: {{ $json.snippet }}",
+        "options": {
+          "systemMessage": "=Summarize the following email snippet into exactly one line, with a maximum of 200 words. Do not include any greetings, headings, or extra text.\n\nEmail Content: {{ $json.snippet }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "57621774-e2e4-4d92-bcd5-aa5976496e0a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        208
+      ],
+      "id": "0441c301-898c-49ab-9ac1-46775073f0bc",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "oWWPki9PbxelFDDY",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "titu.duraisamy28@gmail.com",
+        "subject": "Your 5 unread emails.",
+        "message": "={{ $json.combinedSummary }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        0
+      ],
+      "id": "64715fb2-006f-44ec-b9e6-1f71b26a0d18",
+      "name": "Send a message",
+      "webhookId": "982607a8-9003-43d5-a873-084be0deb87e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "qwxectnGPzERAv8V",
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=Gmail_{{ $json.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        480,
+        208
+      ],
+      "id": "499f1ba1-fb02-4d06-90e1-bf2745cd46e8",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const summaries = items\n  .map(item => {\n    let text = item.json.output || item.json.text || item.json.message || '';\n    return text.trim().replace(/^[-*•]\\s*/, '');\n  })\n  .filter(Boolean)\n  .join('<br><br>');\n\nreturn [{ json: { combinedSummary: summaries } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        0
+      ],
+      "id": "27fa5e76-94e0-47bb-8e27-54aa6b577a1c",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "e5194dec-ae2f-4aab-a97f-6d81f570520d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "37b6eceed61c934be73a420a62940329603a4ad0f20883009f765037746ca92f"
+  },
+  "nodeGroups": [],
+  "id": "wVhS6i6kTKSy4EWt",
+  "tags": []
+}
